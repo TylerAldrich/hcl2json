@@ -9,7 +9,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/tmccombs/hcl2json/convert"
+	"github.com/TylerAldrich/hcl2json/convert"
 )
 
 var Version string = "devel"
