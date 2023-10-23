@@ -177,6 +177,8 @@ func (c *converter) ConvertExpression(expr hclsyntax.Expression) (interface{}, e
 		return c.convertTemplate(value)
 	case *hclsyntax.TemplateWrapExpr:
 		return c.ConvertExpression(value.Wrapped)
+	case *hclsyntax.FunctionCallExpr:
+		return c.convertFunction(value)
 	case *hclsyntax.TupleConsExpr:
 		list := make([]interface{}, 0)
 		for _, ex := range value.Exprs {
@@ -288,6 +290,9 @@ func (c *converter) convertTemplateConditional(expr *hclsyntax.ConditionalExpr) 
 	}
 	builder.WriteString(trueResult)
 	falseResult, err := c.convertStringPart(expr.FalseResult)
+	if err != nil {
+		return "", nil
+	}
 	if len(falseResult) > 0 {
 		builder.WriteString("%{else}")
 		builder.WriteString(falseResult)
@@ -315,6 +320,38 @@ func (c *converter) convertTemplateFor(expr *hclsyntax.ForExpr) (string, error) 
 	builder.WriteString(templ)
 	builder.WriteString("%{endfor}")
 
+	return builder.String(), nil
+}
+
+func (c *converter) convertFunction(expr *hclsyntax.FunctionCallExpr) (string, error) {
+	var builder strings.Builder
+	builder.WriteString("${")
+	builder.WriteString(expr.Name)
+	builder.WriteString("(")
+
+	for i, argExpr := range expr.Args {
+
+		switch a := argExpr.(type) {
+		case *hclsyntax.ScopeTraversalExpr:
+			// Skip doing the traversal and just place the variable back in the expression
+			builder.WriteString(c.rangeSource(a.Range()))
+		default:
+			conv, err := c.ConvertExpression(a)
+			if err != nil {
+				return "", err
+			}
+			marshalledVal, _ := json.Marshal(conv)
+			builder.WriteString(string(marshalledVal))
+		}
+
+		// Add comma except for the last element
+		if i < len(expr.Args)-1 {
+			builder.WriteString(", ")
+		}
+
+	}
+
+	builder.WriteString(")}")
 	return builder.String(), nil
 }
 

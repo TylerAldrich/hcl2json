@@ -229,6 +229,25 @@ variable "region" {
 	compareTest(t, convertedBytes, expected)
 }
 
+func TestConvertFunction(t *testing.T) {
+	input := `
+foo = merge(variable, {
+	thing = "a"
+	thing2 = "b"
+})
+`
+	expected := `{
+	"foo": "${merge(variable, {\"thing\":\"a\",\"thing2\":\"b\"})}"
+}`
+
+	convertedBytes, err := Bytes([]byte(input), "", Options{})
+	if err != nil {
+		t.Fatal("parse bytes:", err)
+	}
+
+	compareTest(t, convertedBytes, expected)
+}
+
 func TestSimplify(t *testing.T) {
 	input := `locals {
 		a = split("-", "xyx-abc-def")
@@ -273,7 +292,7 @@ func TestEndOfFileExpr(t *testing.T) {
 		foo().inputs
 	)`
 	expected := `{
-	"inputs": "${merge(\n\t\t{},\n\t\tfoo().inputs\n\t)}"
+	"inputs": "${merge({}, \"${foo().inputs}\")}"
 }`
 
 	convertedBytes, err := Bytes([]byte(input), "", Options{})
